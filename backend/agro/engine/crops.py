@@ -1,0 +1,101 @@
+"""Crop reference data — faithful port of src/lib/agro-types.ts crop specs.
+
+`Band` is a 4-tuple (a, b, c, d) used for trapezoid membership: [min, optLow, optHigh, max].
+"""
+from typing import List, Tuple, TypedDict
+
+Band = Tuple[float, float, float, float]
+
+
+class CropSpec(TypedDict):
+    key: str
+    label: str
+    ph: Band
+    tempC: Band
+    rain30: Band
+    sandPct: Band
+    gdd30: Band
+    cycleDays: int
+
+
+CROPS: List[CropSpec] = [
+    {
+        "key": "maize", "label": "Maize",
+        "ph": (4.8, 6.0, 7.2, 8.2),
+        "tempC": (12, 21, 30, 38),
+        "rain30": (30, 90, 220, 400),
+        "sandPct": (10, 25, 55, 85),
+        "gdd30": (180, 320, 560, 720),
+        "cycleDays": 120,
+    },
+    {
+        "key": "rice", "label": "Rice",
+        "ph": (4.5, 5.5, 6.8, 8.0),
+        "tempC": (16, 24, 32, 40),
+        "rain30": (80, 160, 400, 700),
+        "sandPct": (0, 5, 35, 65),
+        "gdd30": (220, 380, 620, 780),
+        "cycleDays": 130,
+    },
+    {
+        "key": "cassava", "label": "Cassava",
+        "ph": (4.2, 5.5, 7.0, 8.0),
+        "tempC": (16, 24, 32, 40),
+        "rain30": (20, 60, 200, 380),
+        "sandPct": (20, 40, 75, 95),
+        "gdd30": (200, 340, 600, 760),
+        "cycleDays": 300,
+    },
+    {
+        "key": "soybean", "label": "Soybean",
+        "ph": (5.0, 6.0, 7.0, 8.0),
+        "tempC": (14, 20, 30, 36),
+        "rain30": (40, 90, 200, 340),
+        "sandPct": (10, 20, 50, 80),
+        "gdd30": (180, 300, 540, 700),
+        "cycleDays": 110,
+    },
+    {
+        "key": "tomato", "label": "Tomato",
+        "ph": (5.0, 6.0, 6.8, 7.8),
+        "tempC": (12, 18, 27, 34),
+        "rain30": (20, 50, 150, 260),
+        "sandPct": (10, 25, 60, 85),
+        "gdd30": (150, 260, 480, 640),
+        "cycleDays": 95,
+    },
+    {
+        "key": "cowpea", "label": "Cowpea",
+        "ph": (4.8, 5.8, 7.2, 8.4),
+        "tempC": (16, 22, 32, 40),
+        "rain30": (15, 45, 150, 280),
+        "sandPct": (20, 35, 75, 95),
+        "gdd30": (180, 300, 560, 720),
+        "cycleDays": 85,
+    },
+    {
+        "key": "sorghum", "label": "Sorghum",
+        "ph": (5.0, 5.8, 7.5, 8.6),
+        "tempC": (15, 22, 33, 42),
+        "rain30": (15, 40, 160, 320),
+        "sandPct": (15, 30, 70, 92),
+        "gdd30": (200, 340, 620, 800),
+        "cycleDays": 115,
+    },
+    {
+        "key": "yam", "label": "Yam",
+        "ph": (4.5, 5.5, 6.8, 7.8),
+        "tempC": (18, 25, 32, 38),
+        "rain30": (40, 100, 260, 460),
+        "sandPct": (10, 25, 60, 88),
+        "gdd30": (220, 360, 620, 780),
+        "cycleDays": 240,
+    },
+]
+
+
+def crop_by_key(key: str) -> CropSpec:
+    for c in CROPS:
+        if c["key"] == key:
+            return c
+    return CROPS[0]
