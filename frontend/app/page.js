@@ -12,35 +12,39 @@ import { useAuth } from "@/hooks/useAuth";
 
 const features = [
   {
-    tag: "SOIL",
-    icon: Layers,
-    title: "Soil profile intelligence",
-    body: "pH, organic carbon, texture and drainage pulled per coordinate — no soil lab visit needed.",
-  },
-  {
-    tag: "SKY",
-    icon: CloudSun,
-    title: "Live weather & rainfall",
-    body: "Hourly conditions, 30-day rainfall history and a 7-day forecast for each zone you save.",
-  },
-  {
-    tag: "SUITABILITY",
-    icon: Sprout,
-    title: "Crop suitability scoring",
-    body: "FAO-style suitability scores that rank the best crops for the soil and weather you actually have.",
-  },
-  {
-    tag: "PEST",
-    icon: Bug,
-    title: "Pest Prophet",
-    body: "Weather-driven outbreak risk with the reasoning, confidence and the action to take this week.",
-  },
-  {
-    tag: "MARKET",
-    icon: LineChart,
-    title: "Market board",
-    body: "Track prices for your crops so harvest timing is a decision, not a guess.",
-  },
+  tag: "SOIL",
+  icon: Layers,
+  title: "Soil profile intelligence",
+  body: "Understand the soil conditions across your farm zones and how they may affect your crops.",
+},
+
+{
+  tag: "SKY",
+  icon: CloudSun,
+  title: "Live weather & rainfall",
+  body: "Stay informed about weather conditions and rainfall patterns that matter for your farm.",
+},
+
+{
+  tag: "SUITABILITY",
+  icon: Sprout,
+  title: "Crop suitability scoring",
+  body: "See which crops are best suited to the conditions across each farm zone.",
+},
+
+{
+  tag: "PEST",
+  icon: Bug,
+  title: "Pest Prophet",
+  body: "Get early warnings about potential crop risks and clear guidance on when to take action.",
+},
+
+{
+  tag: "MARKET",
+  icon: LineChart,
+  title: "Market board",
+  body: "Follow crop market trends to make more informed harvest and selling decisions.",
+},
 ];
 
 export default function LandingPage() {
@@ -84,11 +88,10 @@ export default function LandingPage() {
               Field intelligence platform
             </p>
             <h1 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-tight md:text-5xl">
-              Know what your soil, sky and pests are doing — before you walk the field.
+              Make smarter farming decisions before you step into the field.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-              FarmPulse turns free satellite, soil and weather data into one readable dashboard for
-              every zone you farm: suitability scores, pest outbreak windows and market prices.
+              FarmPulse transforms agricultural data into clear insights that help you make better decisions, zone by zone.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               {loading ? (
@@ -100,7 +103,7 @@ export default function LandingPage() {
               ) : (
                 <>
                   <Button size="lg" onClick={() => setAuthMode("signup")}>
-                    Create free account
+                    Create an account
                   </Button>
                   <Button size="lg" variant="secondary" asChild>
                     <Link href="/login">I already have an account</Link>
@@ -149,7 +152,7 @@ export default function LandingPage() {
           <div>
             <h2 className="font-display text-lg font-semibold">Ready when you are</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign up in under a minute. Save a zone and the first snapshot loads instantly.
+              Get started in minutes and see farm insights right away.
             </p>
           </div>
           {!loading && !session ? (
