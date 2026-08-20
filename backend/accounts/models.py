@@ -86,6 +86,30 @@ class PasswordResetToken(models.Model):
     used = models.BooleanField(default=False)
 
 
+class EmailChangeRequest(models.Model):
+    """Double opt-in for changing account email: confirming a link sent to
+    the *new* address is what actually flips CustomUser.email — until then
+    the account keeps its current email. A separate heads-up email also
+    goes to the *old* address so an account takeover attempt (someone else
+    requesting the change) doesn't happen silently.
+
+    The token is stored as-is (not hashed) and looked up directly: unlike a
+    password, it's never user-chosen or reused across services, it's a
+    single-use ~256-bit random value the user only ever has to paste back
+    once via a clicked link, so a plaintext-but-unique-indexed column is
+    the standard, simpler approach here (same as most frameworks' email
+    confirmation tokens) rather than the hash-and-compare pattern used for
+    PasswordResetToken above.
+    """
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="email_change_requests")
+    new_email = models.EmailField(max_length=255)
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+
+
 class Zone(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="zones")

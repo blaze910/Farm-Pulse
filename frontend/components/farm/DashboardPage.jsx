@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { setActiveZoneId, useActiveZoneId } from "@/lib/active-zone";
 import { usePlaceSearch, useSaveZone, useSnapshot, useZones } from "@/lib/app-data";
+import { apiGet } from "@/lib/api";
 import { riskMeta } from "@/lib/farm-data";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,10 @@ export default function DashboardPage() {
   const tips = snapshot?.tips || [];
   const ranking = snapshot?.cropRanking || [];
   const soil = snapshot?.soil;
+  // Every field null/missing at once (rather than one or two) means the
+  // whole SoilGrids lookup didn't come back — that's the case worth
+  // explaining to the person, vs. a single genuinely-unmeasured field.
+  const soilUnavailable = !soil || [soil.ph, soil.organicCarbon, soil.sand, soil.drainage].every((v) => v == null);
   const weather = snapshot?.weather;
   const watchlist = snapshot?.pestWatch ?? [];
   const gallery = watchlist.filter((p) => p.risk !== "none");
@@ -50,7 +55,15 @@ export default function DashboardPage() {
   function choosePlace(place) {
     const draft = { name: place.name, region: place.region || place.country || "Selected location", lat: place.lat, lon: place.lon, hectares: 1, crop: selectedCrop };
     if (user) {
-      saveZone.mutate(draft, { onSuccess: (r) => { const id = r?.data?.zone?.id; if (id) setActiveZoneId(id); setSearch(""); setQuery(""); toast.success("Farm zone saved"); } });
+      saveZone.mutate(draft, {
+        onSuccess: (r) => { const id = r?.data?.zone?.id; if (id) setActiveZoneId(id); setSearch(""); setQuery(""); toast.success("Farm zone saved"); },
+        // Without this, a failed save (network hiccup, validation error,
+        // anything) did nothing visible at all — no toast, no state change,
+        // just silence. That's indistinguishable from the feature being
+        // broken. Surfacing the actual server message here means the next
+        // failure is diagnosable instead of just "not working."
+        onError: (err) => { toast.error(err?.message || "Couldn't save that location. Please try again."); },
+      });
     } else {
       setActiveZoneId(`temp-${place.lat}-${place.lon}`); setQuery(place.name); setSearch(""); toast.success("Location selected for preview");
     }
@@ -63,10 +76,26 @@ export default function DashboardPage() {
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
-        choosePlace({ name: `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`, region: "Current location", lat: latitude, lon: longitude });
+        // Reverse geocode the raw coordinates into a real place name
+        // ("Port Harcourt, Nigeria") via the backend's free Nominatim
+        // proxy. If that call fails for any reason, we still have real
+        // coordinates — fall back to a plain "lat, lon" label rather than
+        // blocking the whole flow on a non-essential lookup.
+        let name = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+        let region = "Current location";
+        try {
+          const json = await apiGet(`/places/reverse/?lat=${latitude}&lon=${longitude}`);
+          if (json?.data?.name) {
+            name = json.data.name;
+            region = json.data.region || region;
+          }
+        } catch {
+          // Non-fatal — see comment above.
+        }
+        setLocating(false);
+        choosePlace({ name, region, lat: latitude, lon: longitude });
       },
       (err) => {
         setLocating(false);
@@ -107,9 +136,9 @@ export default function DashboardPage() {
                   </div>
                 ) : null}
               </div>
-              <Button variant="secondary" onClick={useMyLocation} disabled={locating} title="Use my current location" className="shrink-0">
+              <Button variant="secondary" onClick={useMyLocation} disabled={locating} title="Use my current location" aria-label="Use my current location" className="shrink-0 gap-1.5">
                 {locating ? <Loader2 className="size-4 animate-spin" /> : <Crosshair className="size-4" />}
-                <span className="hidden sm:inline">My location</span>
+                <span className="text-xs sm:text-sm">My location</span>
               </Button>
             </div>
           </header>
@@ -120,7 +149,7 @@ export default function DashboardPage() {
             {zones.map((z) => (
               <button key={z.id} onClick={() => setActiveZoneId(z.id)} className={`rounded-full border px-3 py-1.5 text-xs ${zone?.id === z.id ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>{z.name}</button>
             ))}
-            {zone && <span className="ml-auto text-xs text-muted-foreground">{zone.region} · {zone.crop}</span>}
+            {zone && <span className="ml-auto text-xs text-muted-foreground">{zone.region} · {ranking[0]?.label || zone.crop}</span>}
           </div>
 
           {loading || zonesLoading ? (
@@ -151,6 +180,11 @@ export default function DashboardPage() {
                     <Metric label="Sand" value={soil?.sand ?? "—"} unit="%" />
                     <Metric label="Drainage" value={soil?.drainage ?? "—"} />
                   </div>
+                  {soilUnavailable ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Soil data didn't come back in time from SoilGrids, the free public source we use — this isn't specific to your account. It's usually available if you try again in a moment.
+                    </p>
+                  ) : null}
                 </CardShell>
                 <CardShell title="Crop suitability" subtitle={`Model for ${selectedCrop}`} icon={<Sprout className="size-4" />}>
                   <div className="flex items-end gap-2"><span className="font-mono text-4xl text-primary">{snapshot?.suitability?.score ?? "—"}</span><span className="pb-1 text-xs text-muted-foreground">/ 100</span></div>

@@ -11,6 +11,7 @@ urlpatterns = [
     path("profile/update/", views.update_profile),
     path("profile/password/", views.change_password),
     path("profile/email/", views.change_email),
+    path("profile/email/confirm/", views.confirm_email_change),
     path("profile/avatar/", views.upload_avatar),
     path("zones/", views.zones),
     path("zones/create/", views.create_zone),

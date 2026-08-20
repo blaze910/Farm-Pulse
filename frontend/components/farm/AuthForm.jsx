@@ -82,7 +82,17 @@ export function AuthForm({ initialMode = "signin", onAuthenticated }) {
   }
 
   function handleGoogle() {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/accounts/oauth/google/start/`;
+    // Also relative/same-origin now, same reasoning as lib/api.js — Google
+    // will redirect the browser straight to this path once auth completes,
+    // and going through the Vercel-side proxy (instead of straight to
+    // Render) is what lets the resulting session cookies land as
+    // first-party for this domain instead of onrender.com. See
+    // next.config.mjs for the full explanation. NOTE: this also means
+    // GOOGLE_OAUTH_CALLBACK_URL on the backend, and the redirect URI
+    // registered in Google Cloud Console, both need to point at
+    // https://<this-domain>/api/v1/accounts/oauth/google/callback/ now —
+    // not the Render domain directly.
+    window.location.href = "/api/v1/accounts/oauth/google/start/";
   }
 
   return (

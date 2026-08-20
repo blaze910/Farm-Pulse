@@ -302,7 +302,7 @@ export function MobileTopNav() {
 
   return (
     <>
-      <div className="sticky top-0 z-30 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-sidebar/95 px-3 py-2.5 backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-sidebar/95 px-3 py-2.5 backdrop-blur md:hidden">
         <button
           onClick={() => setOpen(true)}
           aria-label="Open menu"
@@ -324,6 +324,12 @@ export function MobileTopNav() {
           <ThemeToggle className="size-8" />
         </span>
       </div>
+      {/* Since the bar above is `fixed` (removed from normal document flow
+          so it never scrolls away), this spacer reserves the same height
+          in-flow so page content doesn't render underneath it. Height
+          matches the bar's actual rendered height (py-2.5 padding + the
+          9-unit/36px button, ~52px total) plus its 1px border. */}
+      <div className="h-[53px] md:hidden" aria-hidden="true" />
 
       {/* Slide-in drawer */}
       <div

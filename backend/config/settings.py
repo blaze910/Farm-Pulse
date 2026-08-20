@@ -21,6 +21,14 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 _allowed = os.environ.get("ALLOWED_HOSTS", "*")
 ALLOWED_HOSTS = ["*"] if _allowed.strip() == "*" else [x.strip() for x in _allowed.split(",") if x.strip()]
 
+# Render (and most PaaS hosts) terminate TLS at a reverse proxy and forward
+# requests to the app over plain HTTP with an X-Forwarded-Proto header
+# indicating the original scheme. Without this, Django's request.is_secure()
+# always returns False, which weakens CsrfViewMiddleware's HTTPS-only
+# Referer/Origin checks and makes request.build_absolute_uri() (used to
+# build the Google OAuth callback URL) emit http:// links in production.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
     "django.contrib.staticfiles", "django.contrib.messages",
@@ -94,6 +102,16 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
+# Django's SMTP backend has NO timeout by default — a slow/unreachable/
+# misconfigured SMTP host (or a host whose outbound port is blocked, which
+# some PaaS free tiers do) can hang the connection attempt far past
+# Gunicorn's own worker timeout. When that happens Gunicorn kills the
+# worker mid-request with no HTTP response sent at all, which browsers
+# report as a bare "Failed to fetch" — not a clean error message, just a
+# dead connection. Capping this well under Gunicorn's timeout means a
+# broken mail config fails fast with a real error instead of hanging the
+# whole request.
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@farmpulse.local")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")

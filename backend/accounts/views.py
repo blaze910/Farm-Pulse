@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
@@ -18,8 +19,10 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from .authentication import CookieJWTAuthentication
-from .models import CustomUser, OTPCode, PasswordResetToken, Profile, Zone, Notification, UserRole
+from .models import CustomUser, EmailChangeRequest, OTPCode, PasswordResetToken, Profile, Zone, Notification, UserRole
 from .serializers import LoginSerializer, NotificationSerializer, ProfileSerializer, SignupSerializer, ZoneSerializer
+
+logger = logging.getLogger(__name__)
 from .throttles import AuthRateThrottle, OTPRateThrottle
 
 
@@ -29,6 +32,32 @@ def _set_auth_cookies(response, user):
     samesite = "Lax" if settings.DEBUG else "None"
     response.set_cookie("access_token", str(refresh.access_token), httponly=True, secure=secure, samesite=samesite, max_age=900, path="/")
     response.set_cookie("refresh_token", str(refresh), httponly=True, secure=secure, samesite=samesite, max_age=7 * 86400, path="/")
+
+
+def _expire_cookie(response, key, *, secure, samesite, path="/"):
+    # response.delete_cookie() only marks the *deletion* cookie Secure when
+    # you pass samesite="None" — it has no way to express "Secure, but
+    # SameSite=Lax" (which is exactly how google_oauth_state is issued in
+    # production). And a Set-Cookie without Secure can never modify or
+    # clear a cookie that's already Secure — browsers silently ignore the
+    # attempt (RFC 6265bis, "Leave Secure Cookies Alone"). That silent
+    # failure is why logout, account deletion, and password-reset cleanup
+    # weren't actually clearing cookies in production: the deletion request
+    # succeeded and said so, but the browser just kept the old cookie.
+    #
+    # Building the expiring Set-Cookie by hand with attributes that exactly
+    # match how the cookie was originally issued sidesteps that entirely.
+    response.set_cookie(
+        key, "", max_age=0, expires="Thu, 01 Jan 1970 00:00:00 GMT",
+        path=path, secure=secure, samesite=samesite, httponly=True,
+    )
+
+
+def _clear_auth_cookies(response):
+    secure = not settings.DEBUG
+    samesite = "Lax" if settings.DEBUG else "None"
+    _expire_cookie(response, "access_token", secure=secure, samesite=samesite)
+    _expire_cookie(response, "refresh_token", secure=secure, samesite=samesite)
 
 
 
@@ -82,8 +111,7 @@ def refresh(request):
             raise TokenError("User no longer exists or is inactive.")
     except TokenError:
         response = Response({"success": False, "error": "Your session has expired. Please sign in again."}, status=401)
-        response.delete_cookie("access_token", path="/")
-        response.delete_cookie("refresh_token", path="/")
+        _clear_auth_cookies(response)
         return response
 
     response = Response({"success": True, "message": "Session refreshed."})
@@ -149,8 +177,7 @@ def login(request):
 def logout(request):
     if not _csrf_ok(request): return _csrf_error()
     response = Response({"success": True, "message": "You have been signed out."})
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    _clear_auth_cookies(response)
     return response
 
 
@@ -196,11 +223,95 @@ def change_email(request):
     email = str(request.data.get("email", "")).strip().lower()
     if "@" not in email or len(email) > 255:
         return Response({"success": False, "error": "Enter a valid email address."}, status=400)
+    if email == request.user.email:
+        return Response({"success": False, "error": "That's already your email address."}, status=400)
     if CustomUser.objects.exclude(pk=request.user.pk).filter(email=email).exists():
         return Response({"success": False, "error": "That email address is already in use."}, status=409)
-    request.user.email = email
-    request.user.save(update_fields=["email"])
-    return Response({"success": True, "message": "Email address updated."})
+
+    # Double opt-in: nothing on CustomUser changes yet. A confirmation link
+    # goes to the *new* address — only clicking it (see confirm_email_change
+    # below) actually updates the account. A separate heads-up goes to the
+    # *current* address so that if someone else with access to this session
+    # requested the change, the real owner finds out immediately.
+    EmailChangeRequest.objects.filter(user=request.user, used=False).update(used=True)
+    raw_token = secrets.token_urlsafe(32)
+    EmailChangeRequest.objects.create(
+        user=request.user, new_email=email, token=raw_token,
+        expires_at=timezone.now() + timedelta(minutes=30),
+    )
+    confirm_url = f"{settings.FRONTEND_URL}/confirm-email?token={raw_token}"
+    old_email = request.user.email
+
+    try:
+        confirm_msg = EmailMultiAlternatives(
+            "Confirm your new FarmPulse email address",
+            f"Confirm your new FarmPulse email address by visiting this link:\n{confirm_url}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email.",
+            settings.DEFAULT_FROM_EMAIL, [email],
+        )
+        confirm_msg.attach_alternative(
+            f'<p>Confirm your new FarmPulse email address:</p>'
+            f'<p><a href="{confirm_url}">{confirm_url}</a></p>'
+            f'<p>This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>',
+            "text/html",
+        )
+        confirm_msg.send(fail_silently=False)
+
+        notice_msg = EmailMultiAlternatives(
+            "Your FarmPulse email address is changing",
+            f"A request was made to change the email on your FarmPulse account to {email}.\n\n"
+            f"If this was you, no action is needed — the change won't take effect until that new address confirms it.\n"
+            f"If this wasn't you, sign in and change your password right away.",
+            settings.DEFAULT_FROM_EMAIL, [old_email],
+        )
+        notice_msg.send(fail_silently=False)
+    except Exception:
+        # Same principle as the OTP endpoint: don't tell the browser the
+        # email went out if we know it didn't. The pending request row
+        # above is still valid, so a retry from settings will just issue a
+        # fresh token rather than leaving a dangling unconfirmable one.
+        logger.exception("Failed to send email-change confirmation for user %s", request.user.pk)
+        return Response(
+            {"success": False, "error": "Couldn't send the confirmation email right now. Please try again in a moment."},
+            status=502,
+        )
+
+    return Response({
+        "success": True,
+        "message": f"Check {email} for a link to confirm the change. We've also sent a notice to your current address.",
+    })
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def confirm_email_change(request):
+    # Deliberately AllowAny, same reasoning as confirm_password_reset below:
+    # the person confirming may be opening this link from a different
+    # device/session than the one that requested the change (e.g. checking
+    # the new email on their phone). The token itself — single-use,
+    # time-limited, ~256 bits of entropy, tied server-side to one specific
+    # account — is the actual authorization, not the caller's own session.
+    if not _csrf_ok(request): return _csrf_error()
+    token = str(request.data.get("token", "")).strip()
+    if not token:
+        return Response({"success": False, "error": "Missing confirmation token."}, status=400)
+
+    change = EmailChangeRequest.objects.filter(token=token, used=False).first()
+    if not change or change.expires_at <= timezone.now():
+        return Response({"success": False, "error": "That confirmation link is invalid or has expired."}, status=400)
+
+    # The new address could have been claimed by someone else in the window
+    # between the request and the click — re-check right before committing.
+    if CustomUser.objects.exclude(pk=change.user_id).filter(email=change.new_email).exists():
+        change.used = True
+        change.save(update_fields=["used"])
+        return Response({"success": False, "error": "That email address was taken before this link was confirmed."}, status=409)
+
+    change.used = True
+    change.save(update_fields=["used"])
+    user = change.user
+    user.email = change.new_email
+    user.save(update_fields=["email"])
+    return Response({"success": True, "message": "Your email address has been updated.", "data": {"email": user.email}})
 
 
 @api_view(["POST"])
@@ -233,7 +344,22 @@ def request_otp(request):
         html = f"<p>Your FarmPulse verification code is <strong>{code}</strong>.</p><p>This code expires in 10 minutes.</p>"
         msg = EmailMultiAlternatives(subject, text, settings.DEFAULT_FROM_EMAIL, [email])
         msg.attach_alternative(html, "text/html")
-        msg.send(fail_silently=False)
+        try:
+            msg.send(fail_silently=False)
+        except Exception:
+            # The OTP row above is already committed, so the code is valid
+            # even if we couldn't confirm delivery — but we do NOT want to
+            # tell the browser "sent" when we know it wasn't (that just
+            # turns "the email never arrives" into a mystery). Log for
+            # operators and be honest with the client; this also keeps a
+            # broken/misconfigured mail server (or one Render is blocking
+            # outbound to) from ever hanging the request past Gunicorn's
+            # worker timeout — see the EMAIL_TIMEOUT comment in settings.py.
+            logger.exception("Failed to send OTP email to %s", email)
+            return Response(
+                {"success": False, "error": "Couldn't send the verification email right now. Please try again in a moment."},
+                status=502,
+            )
     return Response({"success": True, "message": "If an account matches that email, a verification code has been sent."})
 
 
@@ -287,7 +413,7 @@ def confirm_password_reset(request):
     token.used = True
     token.save(update_fields=["used"])
     response = Response({"success": True, "message": "Your password has been reset. You can sign in now."})
-    response.delete_cookie("pw_reset", path="/")
+    _expire_cookie(response, "pw_reset", secure=not settings.DEBUG, samesite=("Lax" if settings.DEBUG else "None"))
     return response
 
 
@@ -342,8 +468,7 @@ def delete_account(request):
     if not _csrf_ok(request): return _csrf_error()
     request.user.delete()
     response = Response({"success": True, "message": "Your account has been deleted."})
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    _clear_auth_cookies(response)
     return response
 
 
@@ -405,5 +530,5 @@ def google_callback(request):
         UserRole.objects.create(user=user, role="user")
     response = HttpResponseRedirect(f"{settings.FRONTEND_URL}/dashboard")
     _set_auth_cookies(response, user)
-    response.delete_cookie("google_oauth_state", path="/")
+    _expire_cookie(response, "google_oauth_state", secure=not settings.DEBUG, samesite="Lax")
     return response

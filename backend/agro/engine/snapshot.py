@@ -56,6 +56,52 @@ def search_places(query: str) -> list[dict]:
     ]
 
 
+# Nominatim's usage policy requires a real identifying User-Agent on every
+# request — generic/absent ones get silently rate-limited or blocked. This
+# doesn't need to be a "real" domain/contact, just distinct and honest.
+_NOMINATIM_HEADERS = {"User-Agent": "FarmPulse/1.0 (agricultural dashboard; reverse geocoding)"}
+
+
+def reverse_geocode(lat: float, lon: float) -> dict:
+    """Turn raw coordinates (e.g. from the browser's geolocation API) into a
+    human-readable place name via OpenStreetMap/Nominatim's free reverse
+    endpoint — no API key required for this volume of use.
+
+    Falls back to a plain coordinate label if Nominatim is unreachable or
+    returns nothing usable, so "Use my location" still works even when
+    reverse geocoding itself is down.
+    """
+    fallback = {
+        "name": f"{lat:.3f}, {lon:.3f}",
+        "region": "Current location",
+        "country": "",
+    }
+    try:
+        data = get_json(
+            f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=jsonv2&zoom=10&addressdetails=1",
+            headers=_NOMINATIM_HEADERS,
+        )
+    except Exception:
+        return fallback
+
+    address = data.get("address") or {}
+    # Nominatim's address breakdown varies a lot by locale/place type — try
+    # the most specific fields first, falling back to broader ones, rather
+    # than assuming one field is always present.
+    locality = (
+        address.get("city") or address.get("town") or address.get("village")
+        or address.get("county") or address.get("state") or data.get("name")
+    )
+    region = ", ".join(filter(None, [address.get("state"), address.get("country")]))
+    if not locality:
+        return fallback
+    return {
+        "name": locality,
+        "region": region or "Current location",
+        "country": address.get("country") or "",
+    }
+
+
 def get_snapshot(lat: float, lon: float, crop: str) -> dict:
     """Run weather + soil concurrently; soil is capped at SOIL_BUDGET_S so
     weather (and the overall response) never blocks on SoilGrids.

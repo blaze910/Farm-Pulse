@@ -75,8 +75,15 @@ export default function SettingsPage() {
     const parsed = z.string().trim().email().max(255).safeParse(newEmail);
     if (!parsed.success) { toast.error("Enter a valid email address"); return; }
     setBusy("email");
-    try { await apiPost("/accounts/profile/email/", { email: parsed.data }); toast.success("Email address updated"); setNewEmail(""); }
-    catch (err) { toast.error(err.message || "Could not change email"); } finally { setBusy(null); }
+    // Nothing changes on the account yet at this point — the backend now
+    // requires clicking a confirmation link sent to the new address before
+    // it actually takes effect, so the toast needs to say that instead of
+    // implying it's already done.
+    try {
+      const json = await apiPost("/accounts/profile/email/", { email: parsed.data });
+      toast.success(json?.message || `Check ${parsed.data} for a confirmation link.`);
+      setNewEmail("");
+    } catch (err) { toast.error(err.message || "Could not change email"); } finally { setBusy(null); }
   }
 
   async function changePassword() {

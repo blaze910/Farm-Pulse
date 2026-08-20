@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from agro.engine.fx import get_fx_rates
 from agro.engine.market import get_market_board
-from agro.engine.snapshot import get_snapshot, search_places
+from agro.engine.snapshot import get_snapshot, reverse_geocode, search_places
 
 
 @api_view(["GET"])
@@ -28,6 +28,19 @@ def places(request):
         return Response(results)
     except Exception as e:
         return Response({"error": str(e) or "Geocoding service unavailable"}, status=502)
+
+
+@api_view(["GET"])
+def places_reverse(request):
+    try:
+        lat = float(request.query_params.get("lat", ""))
+        lon = float(request.query_params.get("lon", ""))
+    except (TypeError, ValueError):
+        return Response({"success": False, "error": "lat and lon query params are required."}, status=400)
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return Response({"success": False, "error": "lat/lon out of range."}, status=400)
+    result = reverse_geocode(lat, lon)
+    return Response({"success": True, "data": result})
 
 
 @api_view(["GET"])
