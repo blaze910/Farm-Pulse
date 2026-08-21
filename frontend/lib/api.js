@@ -1,13 +1,6 @@
 "use client";
 
-// This now points at our own same-origin proxy (see next.config.mjs
-// rewrites()), not the Render backend directly. Making the browser call
-// its own domain instead of onrender.com is what fixes iOS Safari's ITP
-// blocking the cookie exchange (see next.config.mjs for the full
-// explanation) — it also happens to be a more robust default generally,
-// since it doesn't depend on any particular browser's cross-site cookie
-// policy at all, present or future.
-const API_URL = "/api/v1";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
 let csrfToken = null;
 // In-flight refresh promise, shared across concurrent requests so a burst of
