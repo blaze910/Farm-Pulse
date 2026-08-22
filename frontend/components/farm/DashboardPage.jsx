@@ -99,7 +99,15 @@ export default function DashboardPage() {
       },
       (err) => {
         setLocating(false);
-        toast.error(err.code === 1 ? "Location permission denied." : "Couldn't get your location.");
+        toast.error(
+  err.code === 1
+    ? "Location permission denied. Please allow FarmPulse to access your location."
+    : err.code === 2
+      ? "Location unavailable. Please turn on your device's location services."
+      : err.code === 3
+        ? "Location request timed out. Please try again."
+        : "Couldn't get your location. Please try again."
+    );
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
@@ -162,7 +170,7 @@ export default function DashboardPage() {
             <CardShell title="Choose a farm location" subtitle="Search above, or use your current location">
               <div className="grid place-items-center py-16 text-center">
                 <MapPin className="size-7 text-primary" />
-                <p className="mt-3 text-sm">Start with a location. FarmPulse will use free weather and soil services where available.</p>
+                <p className="mt-3 text-sm">Start with a location.</p>
               </div>
             </CardShell>
           ) : snapshotErrored ? (
@@ -182,7 +190,7 @@ export default function DashboardPage() {
                   </div>
                   {soilUnavailable ? (
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Soil data didn't come back in time from SoilGrids, the free public source we use — this isn't specific to your account. It's usually available if you try again in a moment.
+                      Try again later
                     </p>
                   ) : null}
                 </CardShell>
@@ -199,7 +207,7 @@ export default function DashboardPage() {
                     <div className="grid place-items-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
                   </CardShell>
                 )}
-                <CardShell title="Watchlist" subtitle="All modelled pests for this zone" stale={isFetching}>
+                <CardShell title="Watchlist" subtitle="Pests to watch for in your area" stale={isFetching}>
                   {watchlist.length ? (
                     <ul className="divide-y divide-border/60">
                       {watchlist.map((p) => (
@@ -216,7 +224,7 @@ export default function DashboardPage() {
               </div>
 
               {gallery.length ? (
-                <CardShell title="Pests in play" subtitle="Live photos from the open iNaturalist catalogue" stale={isFetching}>
+                <CardShell title="Pests in play" subtitle="Pests currently detected in this zone" stale={isFetching}>
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {gallery.map((p) => (
                       <figure key={p.name} className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
@@ -239,7 +247,7 @@ export default function DashboardPage() {
               <MarketSection />
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <CardShell title="What to do & where to plant" subtitle="Read from your weather, rainfall, soil, suitability and pest cards" stale={isFetching}>
+                <CardShell title="What to do & where to plant" subtitle="Based on your weather, rainfall, soil, crop suitability, and pest data" stale={isFetching}>
                   <ul className="divide-y divide-border/60">
                     {tips.map((t) => (
                       <li key={t.title} className="py-3">
@@ -252,7 +260,7 @@ export default function DashboardPage() {
                     ))}
                   </ul>
                 </CardShell>
-                <CardShell title="Best crop options" subtitle="Weighted against soil + weather">
+                <CardShell title="Best crop options" subtitle="Ranked by soil and weather conditions">
                   <div className="space-y-3">
                     {ranking.slice(0, 5).map((r) => (
                       <div key={r.key}>

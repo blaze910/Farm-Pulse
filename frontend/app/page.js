@@ -13,35 +13,35 @@ import { useAuth } from "@/hooks/useAuth";
 
 const features = [
   {
-    tag: "SOIL",
-    icon: Layers,
-    title: "Soil profile intelligence",
-    body: "pH, organic carbon, texture and drainage pulled per coordinate — no soil lab visit needed.",
-  },
-  {
-    tag: "SKY",
-    icon: CloudSun,
-    title: "Live weather & rainfall",
-    body: "Hourly conditions, 30-day rainfall history and a 7-day forecast for each zone you save.",
-  },
-  {
-    tag: "SUITABILITY",
-    icon: Sprout,
-    title: "Crop suitability scoring",
-    body: "FAO-style suitability scores that rank the best crops for the soil and weather you actually have.",
-  },
-  {
-    tag: "PEST",
-    icon: Bug,
-    title: "Pest Prophet",
-    body: "Weather-driven outbreak risk with the reasoning, confidence and the action to take this week.",
-  },
-  {
-    tag: "MARKET",
-    icon: LineChart,
-    title: "Market board",
-    body: "Track prices for your crops so harvest timing is a decision, not a guess.",
-  },
+  tag: "SOIL",
+  icon: Layers,
+  title: "Understand your soil",
+  body: "Get clear insights into the conditions that influence crop growth and field performance.",
+},
+{
+  tag: "WEATHER",
+  icon: CloudSun,
+  title: "Stay ahead of the weather",
+  body: "Keep track of changing conditions and rainfall to make better decisions throughout the season.",
+},
+{
+  tag: "CROPS",
+  icon: Sprout,
+  title: "Choose crops with confidence",
+  body: "Discover crops that are well suited to your field conditions and growing environment.",
+},
+{
+  tag: "PESTS",
+  icon: Bug,
+  title: "Spot risks early",
+  body: "Receive practical insights when conditions indicate that your crops may need attention.",
+},
+{
+  tag: "MARKET",
+  icon: LineChart,
+  title: "Make smarter market decisions",
+  body: "Keep an eye on crop prices and market trends to help plan your next move.",
+},
 ];
 
 export default function LandingPage() {

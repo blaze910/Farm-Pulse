@@ -159,8 +159,7 @@ export default function SettingsPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Square images work best — we crop to a circle without stretching. Stored privately,
-                only you can read it.
+                For the best result, use a clear square profile photo.
               </p>
             </div>
 
@@ -180,7 +179,7 @@ export default function SettingsPage() {
           </CardShell>
 
           <div className="space-y-4">
-            <CardShell title="Email address" subtitle="Verified at both addresses" icon={<Mail className="size-4" />}>
+            <CardShell title="Change Email address" subtitle="Verified at both addresses" icon={<Mail className="size-4" />}>
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="ne">New email</Label>
@@ -202,7 +201,7 @@ export default function SettingsPage() {
               </div>
             </CardShell>
 
-            <CardShell title="Password" subtitle="Checked against known breaches" icon={<ShieldCheck className="size-4" />}>
+            <CardShell title="Change Password" subtitle="Checked against known breaches" icon={<ShieldCheck className="size-4" />}>
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="pw">New password</Label>
