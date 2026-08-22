@@ -131,3 +131,26 @@ class Notification(models.Model):
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="info")
     read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class SupportMessage(models.Model):
+    """An email received at support@farmpulse.name.ng, via Resend's inbound
+    webhook. Kept here (not just forwarded-and-forgotten) so a message
+    survives even if forwarding fails, and so there's a record visible in
+    Django admin without depending on any particular inbox being checked.
+    """
+    id = models.BigAutoField(primary_key=True)
+    resend_email_id = models.CharField(max_length=100, unique=True, db_index=True)
+    from_email = models.EmailField()
+    to_email = models.EmailField(blank=True)
+    subject = models.CharField(max_length=500, blank=True)
+    text_body = models.TextField(blank=True)
+    html_body = models.TextField(blank=True)
+    forwarded = models.BooleanField(default=False)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+
+    def __str__(self):
+        return f"{self.from_email}: {self.subject}"[:80]

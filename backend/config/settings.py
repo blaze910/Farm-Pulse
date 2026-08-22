@@ -146,6 +146,14 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 # this just makes the address ready to use once it's built.
 EMAIL_FROM_SUPPORT = os.environ.get("EMAIL_FROM_SUPPORT", "support@farmpulse.name.ng")
 EMAIL_FROM_ALERTS = os.environ.get("EMAIL_FROM_ALERTS", "alerts@farmpulse.name.ng")
+
+# Inbound email (support@ replies), via Resend's webhook. RESEND_WEBHOOK_SECRET
+# comes from Resend's dashboard when you create the webhook subscription
+# (starts with "whsec_") — used to verify each delivery is genuinely from
+# Resend, not a spoofed POST to a guessable URL. SUPPORT_FORWARD_TO_EMAIL is
+# whichever personal inbox should get a copy of every support message.
+RESEND_WEBHOOK_SECRET = os.environ.get("RESEND_WEBHOOK_SECRET", "")
+SUPPORT_FORWARD_TO_EMAIL = os.environ.get("SUPPORT_FORWARD_TO_EMAIL", "")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")

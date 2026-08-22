@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .webhooks import resend_inbound_webhook
 
 urlpatterns = [
     path("csrf/", views.csrf),
@@ -24,4 +25,5 @@ urlpatterns = [
     path("password-reset/confirm/", views.confirm_password_reset),
     path("oauth/google/start/", views.google_start),
     path("oauth/google/callback/", views.google_callback),
+    path("webhooks/resend-inbound/", resend_inbound_webhook),
 ]

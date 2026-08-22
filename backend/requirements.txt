@@ -8,4 +8,4 @@ psycopg[binary]>=3.2
 supabase>=2.4
 gunicorn>=22.0
 whitenoise>=6.7
-resend>=2.0
+resend>=2.4  # >=2.4 for the inbound-email "Receiving" API (Nov 2025 feature)

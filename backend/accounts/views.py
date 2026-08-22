@@ -19,7 +19,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from .emailing import send_email
+from .emailing import send_email, wrap_html, wrap_text
 
 from .authentication import CookieJWTAuthentication
 from .models import CustomUser, EmailChangeRequest, OTPCode, PasswordResetToken, Profile, Zone, Notification, UserRole
@@ -248,26 +248,31 @@ def change_email(request):
     try:
         send_email(
             subject="Confirm your new FarmPulse email address",
-            text=f"Confirm your new FarmPulse email address by visiting this link:\n{confirm_url}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email.",
-            html=(
-                f'<p>Confirm your new FarmPulse email address:</p>'
-                f'<p><a href="{confirm_url}">{confirm_url}</a></p>'
-                f'<p>This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>'
+            text=wrap_text(f"Confirm your new FarmPulse email address by visiting this link:\n{confirm_url}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email."),
+            html=wrap_html(
+                f'<p style="margin:0 0 20px 0;">Confirm your new FarmPulse email address to finish the change:</p>'
+                f'<p style="margin:0 0 20px 0;text-align:center;">'
+                f'<a href="{confirm_url}" style="display:inline-block;padding:12px 24px;background-color:#15803d;color:#ffffff;'
+                f'border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Confirm email address</a>'
+                f'</p>'
+                f'<p style="margin:0 0 16px 0;color:#7a7a72;font-size:13px;">Or paste this link into your browser:<br/>'
+                f'<a href="{confirm_url}" style="color:#15803d;word-break:break-all;">{confirm_url}</a></p>'
+                f'<p style="margin:0;color:#7a7a72;font-size:13px;">This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>'
             ),
             to=email,
             from_email=settings.EMAIL_FROM_SUPPORT,
         )
         send_email(
             subject="Your FarmPulse email address is changing",
-            text=(
+            text=wrap_text(
                 f"A request was made to change the email on your FarmPulse account to {email}.\n\n"
                 f"If this was you, no action is needed — the change won't take effect until that new address confirms it.\n"
                 f"If this wasn't you, sign in and change your password right away."
             ),
-            html=(
-                f"<p>A request was made to change the email on your FarmPulse account to {email}.</p>"
-                f"<p>If this was you, no action is needed — the change won't take effect until that new address confirms it.</p>"
-                f"<p>If this wasn't you, sign in and change your password right away.</p>"
+            html=wrap_html(
+                f'<p style="margin:0 0 16px 0;">A request was made to change the email on your FarmPulse account to <strong>{email}</strong>.</p>'
+                f'<p style="margin:0 0 16px 0;">If this was you, no action is needed — the change won\'t take effect until that new address confirms it.</p>'
+                f'<p style="margin:0;color:#b91c1c;">If this wasn\'t you, sign in and change your password right away.</p>'
             ),
             from_email=settings.EMAIL_FROM_SUPPORT,
             to=old_email,
@@ -352,8 +357,15 @@ def request_otp(request):
         OTPCode.objects.filter(email=email, used=False).update(used=True)
         OTPCode.objects.create(user=user, email=email, hashed_code=make_password(code), expires_at=timezone.now() + timedelta(minutes=10))
         subject = "Your FarmPulse verification code"
-        text = f"Your FarmPulse verification code is {code}. It expires in 10 minutes."
-        html = f"<p>Your FarmPulse verification code is <strong>{code}</strong>.</p><p>This code expires in 10 minutes.</p>"
+        text = wrap_text(f"Your FarmPulse verification code is {code}.\n\nThis code expires in 10 minutes. If you didn't request this, you can ignore this email.")
+        html = wrap_html(
+            f'<p style="margin:0 0 16px 0;">Use this code to continue:</p>'
+            f'<p style="margin:0 0 16px 0;text-align:center;">'
+            f'<span style="display:inline-block;padding:14px 28px;background-color:#f4f4f1;border-radius:10px;'
+            f'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:6px;color:#1a1a18;">{code}</span>'
+            f'</p>'
+            f'<p style="margin:0;color:#7a7a72;font-size:13px;">This code expires in 10 minutes. If you didn\'t request this, you can ignore this email.</p>'
+        )
         try:
             send_email(subject=subject, text=text, html=html, to=email)
         except Exception:
