@@ -113,6 +113,16 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 # whole request.
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@farmpulse.local")
+
+# Render's free tier blocks all outbound SMTP (ports 25/465/587) as of
+# September 2025 to prevent spam abuse — the EMAIL_HOST/SMTP settings above
+# just hang until they hit EMAIL_TIMEOUT there, every time, regardless of
+# how correct the credentials are. When this is set, accounts/emailing.py
+# sends over Resend's HTTPS API instead (port 443, unaffected by that
+# block) and only falls back to the SMTP settings above when this is
+# blank — which keeps local dev simple (no API key needed, just uses the
+# console backend as before) while actually working in production.
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")

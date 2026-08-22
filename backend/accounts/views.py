@@ -7,7 +7,6 @@ import requests
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.mail import EmailMultiAlternatives
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import CsrfViewMiddleware, get_token
 from django.utils import timezone
@@ -17,6 +16,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+
+from .emailing import send_email
 
 from .authentication import CookieJWTAuthentication
 from .models import CustomUser, EmailChangeRequest, OTPCode, PasswordResetToken, Profile, Zone, Notification, UserRole
@@ -243,27 +244,30 @@ def change_email(request):
     old_email = request.user.email
 
     try:
-        confirm_msg = EmailMultiAlternatives(
-            "Confirm your new FarmPulse email address",
-            f"Confirm your new FarmPulse email address by visiting this link:\n{confirm_url}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email.",
-            settings.DEFAULT_FROM_EMAIL, [email],
+        send_email(
+            subject="Confirm your new FarmPulse email address",
+            text=f"Confirm your new FarmPulse email address by visiting this link:\n{confirm_url}\n\nThis link expires in 30 minutes. If you didn't request this, you can ignore this email.",
+            html=(
+                f'<p>Confirm your new FarmPulse email address:</p>'
+                f'<p><a href="{confirm_url}">{confirm_url}</a></p>'
+                f'<p>This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>'
+            ),
+            to=email,
         )
-        confirm_msg.attach_alternative(
-            f'<p>Confirm your new FarmPulse email address:</p>'
-            f'<p><a href="{confirm_url}">{confirm_url}</a></p>'
-            f'<p>This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>',
-            "text/html",
+        send_email(
+            subject="Your FarmPulse email address is changing",
+            text=(
+                f"A request was made to change the email on your FarmPulse account to {email}.\n\n"
+                f"If this was you, no action is needed — the change won't take effect until that new address confirms it.\n"
+                f"If this wasn't you, sign in and change your password right away."
+            ),
+            html=(
+                f"<p>A request was made to change the email on your FarmPulse account to {email}.</p>"
+                f"<p>If this was you, no action is needed — the change won't take effect until that new address confirms it.</p>"
+                f"<p>If this wasn't you, sign in and change your password right away.</p>"
+            ),
+            to=old_email,
         )
-        confirm_msg.send(fail_silently=False)
-
-        notice_msg = EmailMultiAlternatives(
-            "Your FarmPulse email address is changing",
-            f"A request was made to change the email on your FarmPulse account to {email}.\n\n"
-            f"If this was you, no action is needed — the change won't take effect until that new address confirms it.\n"
-            f"If this wasn't you, sign in and change your password right away.",
-            settings.DEFAULT_FROM_EMAIL, [old_email],
-        )
-        notice_msg.send(fail_silently=False)
     except Exception:
         # Same principle as the OTP endpoint: don't tell the browser the
         # email went out if we know it didn't. The pending request row
@@ -342,10 +346,8 @@ def request_otp(request):
         subject = "Your FarmPulse verification code"
         text = f"Your FarmPulse verification code is {code}. It expires in 10 minutes."
         html = f"<p>Your FarmPulse verification code is <strong>{code}</strong>.</p><p>This code expires in 10 minutes.</p>"
-        msg = EmailMultiAlternatives(subject, text, settings.DEFAULT_FROM_EMAIL, [email])
-        msg.attach_alternative(html, "text/html")
         try:
-            msg.send(fail_silently=False)
+            send_email(subject=subject, text=text, html=html, to=email)
         except Exception:
             # The OTP row above is already committed, so the code is valid
             # even if we couldn't confirm delivery — but we do NOT want to

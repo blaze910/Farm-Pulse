@@ -1,0 +1,40 @@
+"""Shared transactional-email sending, used by OTP requests and the
+email-change confirmation flow.
+
+Render's free tier blocks all outbound SMTP (ports 25/465/587) as of
+September 2025. Any attempt to send via Django's normal SMTP EMAIL_BACKEND
+from there just hangs until EMAIL_TIMEOUT, every single time — it's not a
+credentials or code problem, it's a network-level block on the platform.
+
+Resend's API runs over plain HTTPS (port 443), which isn't affected, so
+that's what this uses in production. Locally, RESEND_API_KEY is normally
+unset, so this quietly falls back to Django's configured EMAIL_BACKEND
+(the console backend by default) — no API key needed just to test a flow
+on your own machine.
+"""
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+
+
+def send_email(*, subject: str, text: str, html: str, to: str) -> None:
+    """Send one transactional email. Raises on failure either way — callers
+    are expected to catch this and turn it into a clean error response
+    (see request_otp / change_email in views.py) rather than let a 500
+    propagate from a dependency the caller can't control.
+    """
+    if settings.RESEND_API_KEY:
+        import resend
+
+        resend.api_key = settings.RESEND_API_KEY
+        resend.Emails.send({
+            "from": settings.DEFAULT_FROM_EMAIL,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+            "text": text,
+        })
+        return
+
+    msg = EmailMultiAlternatives(subject, text, settings.DEFAULT_FROM_EMAIL, [to])
+    msg.attach_alternative(html, "text/html")
+    msg.send(fail_silently=False)
