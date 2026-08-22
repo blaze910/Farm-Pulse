@@ -49,7 +49,18 @@ else:
     DATABASES = {"default": {"ENGINE":"django.db.backends.sqlite3","NAME":BASE_DIR / "db.sqlite3"}}
 
 AUTH_USER_MODEL = "accounts.CustomUser"
-AUTH_PASSWORD_VALIDATORS = []
+# Was an empty list — Django's built-in checks (minimum length, not a
+# common/leaked password, not all-numeric, not too similar to the user's
+# own email) were entirely switched off. Only the signup form's
+# min_length=8 was actually doing anything, meaning "password" or
+# "12345678" both passed. Re-enabling these is the actual fix — this list
+# is what Django ships by default and most Django apps run unmodified.
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -123,6 +134,18 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no
 # blank — which keeps local dev simple (no API key needed, just uses the
 # console backend as before) while actually working in production.
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+
+# Separate sender addresses for different email categories — a support@
+# reply-to matters most for the email-change flow specifically, since
+# that's the one where a confused/suspicious recipient is most likely to
+# want to actually respond to someone. no-reply@ (DEFAULT_FROM_EMAIL,
+# above) stays the default for everything else. alerts@ is reserved for
+# triggered pest-risk notification emails — that feature doesn't exist yet
+# (the pest risk model and the "Alerts" opt-in checkbox in the UI both
+# exist, but nothing currently sends a triggered email when risk changes),
+# this just makes the address ready to use once it's built.
+EMAIL_FROM_SUPPORT = os.environ.get("EMAIL_FROM_SUPPORT", "support@farmpulse.name.ng")
+EMAIL_FROM_ALERTS = os.environ.get("EMAIL_FROM_ALERTS", "alerts@farmpulse.name.ng")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")

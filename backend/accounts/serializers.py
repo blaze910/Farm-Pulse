@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import CustomUser, Profile, Zone, Notification
 
@@ -7,6 +9,20 @@ class SignupSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255)
     password = serializers.CharField(min_length=8, max_length=72, write_only=True)
     username = serializers.CharField(max_length=40, required=False, allow_blank=True)
+
+    def validate_password(self, value):
+        # min_length=8 above is just a raw character-count check — this is
+        # what actually runs the AUTH_PASSWORD_VALIDATORS chain from
+        # settings.py (rejects common/leaked passwords, all-numeric ones,
+        # and ones too similar to the account's own email), so something
+        # like "password" or "12345678" — 8+ characters, but not remotely
+        # strong — gets caught here instead of sailing through.
+        temp_user = CustomUser(email=str(self.initial_data.get("email", "")).strip().lower())
+        try:
+            validate_password(value, user=temp_user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value
 
     def create(self, validated_data):
         email = validated_data["email"].lower().strip()

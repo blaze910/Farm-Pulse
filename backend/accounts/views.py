@@ -7,6 +7,8 @@ import requests
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import CsrfViewMiddleware, get_token
 from django.utils import timezone
@@ -253,6 +255,7 @@ def change_email(request):
                 f'<p>This link expires in 30 minutes. If you didn\'t request this, you can ignore this email.</p>'
             ),
             to=email,
+            from_email=settings.EMAIL_FROM_SUPPORT,
         )
         send_email(
             subject="Your FarmPulse email address is changing",
@@ -266,6 +269,7 @@ def change_email(request):
                 f"<p>If this was you, no action is needed — the change won't take effect until that new address confirms it.</p>"
                 f"<p>If this wasn't you, sign in and change your password right away.</p>"
             ),
+            from_email=settings.EMAIL_FROM_SUPPORT,
             to=old_email,
         )
     except Exception:
@@ -326,6 +330,10 @@ def change_password(request):
     password = request.data.get("password", "")
     if not isinstance(password, str) or not 8 <= len(password) <= 72:
         return Response({"success": False, "error": "Use a password between 8 and 72 characters."}, status=400)
+    try:
+        validate_password(password, user=request.user)
+    except DjangoValidationError as exc:
+        return Response({"success": False, "error": " ".join(exc.messages)}, status=400)
     request.user.set_password(password)
     request.user.save(update_fields=["password"])
     return Response({"success": True, "message": "Password changed successfully."})
@@ -410,6 +418,10 @@ def confirm_password_reset(request):
                 break
     if not raw or not token:
         return Response({"success": False, "error": "Your reset session has expired. Request a new code."}, status=400)
+    try:
+        validate_password(password, user=token.user)
+    except DjangoValidationError as exc:
+        return Response({"success": False, "error": " ".join(exc.messages)}, status=400)
     token.user.set_password(password)
     token.user.save(update_fields=["password"])
     token.used = True

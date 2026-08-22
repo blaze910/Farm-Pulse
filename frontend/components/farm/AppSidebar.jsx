@@ -96,7 +96,17 @@ export function AppSidebar({ variant = "desktop", onNavigate }) {
   return (
     <aside
       className={cn(
-        "flex h-screen shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-sidebar-border bg-sidebar",
+        // h-dvh (dynamic viewport height), not h-screen (100vh): 100vh is
+        // calculated against the LARGEST possible viewport (mobile browser
+        // chrome collapsed), which is taller than what's actually visible
+        // when the address bar is showing. Content pinned to the bottom of
+        // an oversized h-screen box — like the logout button below — ends
+        // up positioned below the real visible area, hidden behind the
+        // browser's own UI, with nothing technically overflowing for
+        // overflow-y-auto to let you scroll to. dvh tracks the real
+        // visible viewport as the browser chrome shows/hides, which is
+        // the actual fix, not just adding more overflow handling.
+        "flex h-dvh shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-sidebar-border bg-sidebar",
         drawer ? "w-full" : "sticky top-0 hidden md:flex transition-[width] duration-300 ease-out",
         width,
       )}
@@ -167,8 +177,8 @@ export function AppSidebar({ variant = "desktop", onNavigate }) {
               </button>
             </PopoverTrigger>
           <PopoverContent
-            side="right"
-            align="end"
+            side={drawer ? "bottom" : "right"}
+            align={drawer ? "start" : "end"}
             collisionPadding={16}
             className="w-[min(20rem,calc(100vw-2rem))] p-0"
           >

@@ -1,24 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronDown, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { CardShell } from "@/components/farm/CardShell";
 import { useMarketBoard, useFxRates } from "@/lib/app-data";
 import { CURRENCIES, convert, formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 function CurrencySelect({ value, onChange }) {
+  // Was a plain native <select> — the trigger box itself can be styled,
+  // but the dropdown *list* that pops open is rendered by the OS/browser,
+  // not by our CSS, and largely ignores the app's dark theme (this shows
+  // up as a stark white/grey system-styled list on Android in particular).
+  // Rebuilding it on the same Popover primitive already used elsewhere
+  // (e.g. notifications) keeps every pixel — trigger and list both — under
+  // our own theme-aware styling instead of handing the list off to the OS.
+  const [open, setOpen] = useState(false);
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label="Display currency"
-      className="rounded-lg border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] text-foreground"
-    >
-      {Object.entries(CURRENCIES).map(([code]) => (
-        <option key={code} value={code}>{code}</option>
-      ))}
-    </select>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Display currency"
+          className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1 font-mono text-[11px] text-foreground"
+        >
+          {value}
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" collisionPadding={12} className="w-28 p-1">
+        <ul className="space-y-0.5">
+          {Object.entries(CURRENCIES).map(([code]) => (
+            <li key={code}>
+              <button
+                type="button"
+                onClick={() => { onChange(code); setOpen(false); }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left font-mono text-[11px] transition-colors",
+                  code === value ? "bg-primary/15 text-primary" : "text-foreground hover:bg-muted",
+                )}
+              >
+                {code}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 

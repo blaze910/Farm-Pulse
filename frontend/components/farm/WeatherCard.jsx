@@ -27,11 +27,17 @@ export function WeatherCard({ weather, isFetching }) {
         7-day forecast{forecastTotal !== null ? ` · ${forecastTotal}mm total` : ""}
       </p>
       {weather?.daily ? (
-        <div className="grid grid-cols-7 gap-2">
+        // Below sm, this is a horizontally scrollable strip instead of a
+        // forced 7-column grid — 7 equal columns on a ~350px phone screen
+        // left each card under 45px wide, too cramped for the icon + two
+        // lines of text to read cleanly. min-w-16 keeps every card at a
+        // comfortable minimum size; sm:grid switches to the full 7-across
+        // layout once there's actually room for it.
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-7 sm:overflow-visible sm:px-0 sm:pb-0">
           {weather.daily.map((d) => {
             const DayIcon = weatherIcon({ rainMm: d.rainMm || 0, tempC: d.max });
             return (
-              <div key={d.d} className="rounded-xl border border-border/60 bg-muted/30 p-2 text-center">
+              <div key={d.d} className="min-w-16 shrink-0 rounded-xl border border-border/60 bg-muted/30 p-2 text-center sm:min-w-0 sm:shrink">
                 <p className="text-[10px] text-muted-foreground">{d.d.slice(5)}</p>
                 <DayIcon className="mx-auto my-1.5 size-4 text-primary" />
                 <p className="font-mono text-sm">{Math.round(d.max)}°</p>

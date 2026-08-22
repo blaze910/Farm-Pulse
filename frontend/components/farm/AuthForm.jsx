@@ -15,7 +15,16 @@ import { PasswordInput } from "@/components/farm/PasswordInput";
 import { AUTH_QUERY_KEY } from "@/hooks/useAuth";
 
 const emailSchema = z.string().trim().email("Enter a valid email address").max(255);
-const passwordSchema = z.string().min(8, "Use at least 8 characters").max(72);
+// The backend is the actual source of truth (settings.AUTH_PASSWORD_VALIDATORS
+// — common/leaked password blocklist, similarity to the account's email,
+// etc.), and its exact message comes through the toast on rejection either
+// way. This client-side check just catches the cheap, instant case (all
+// digits) before a round trip, matching Django's NumericPasswordValidator.
+const passwordSchema = z
+  .string()
+  .min(8, "Use at least 8 characters")
+  .max(72)
+  .refine((v) => !/^\d+$/.test(v), "Password can't be entirely numbers");
 
 /**
  * Shared sign-in / sign-up form.
@@ -140,6 +149,9 @@ export function AuthForm({ initialMode = "signin", onAuthenticated }) {
             onChange={setPassword}
             required
           />
+          {mode === "signup" ? (
+            <p className="text-xs text-muted-foreground">At least 8 characters. Avoid common passwords and all-number passwords.</p>
+          ) : null}
         </div>
 
         <Button type="submit" className="w-full" disabled={busy}>
