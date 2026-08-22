@@ -219,7 +219,7 @@ export default function DashboardPage() {
                         </li>
                       ))}
                     </ul>
-                  ) : <p className="py-10 text-center text-sm text-muted-foreground">No modelled pests yet for this zone.</p>}
+                  ) : <p className="py-10 text-center text-sm text-muted-foreground">No pests found in this zone.</p>}
                 </CardShell>
               </div>
 

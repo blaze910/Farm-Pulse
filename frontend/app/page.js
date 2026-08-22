@@ -85,11 +85,10 @@ export default function LandingPage() {
               Field intelligence platform
             </p>
             <h1 className="mt-3 max-w-2xl font-display text-4xl font-semibold tracking-tight md:text-5xl">
-              Know what your soil, sky and pests are doing — before you walk the field.
+              Know what your soil, weather, and pests are doing — before you walk the field.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground md:text-base">
-              FarmPulse turns free satellite, soil and weather data into one readable dashboard for
-              every zone you farm: suitability scores, pest outbreak windows and market prices.
+             FarmPulse turns complex agricultural data into simple, actionable insights — helping you know what to plant, when to act, and where to farm.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               {loading ? (
@@ -101,7 +100,7 @@ export default function LandingPage() {
               ) : (
                 <>
                   <Button size="lg" onClick={() => setAuthMode("signup")}>
-                    Create free account
+                    Create an account
                   </Button>
                   <Button size="lg" variant="secondary" asChild>
                     <Link href="/login">I already have an account</Link>
@@ -150,7 +149,7 @@ export default function LandingPage() {
           <div>
             <h2 className="font-display text-lg font-semibold">Ready when you are</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign up in under a minute. Save a zone and the first snapshot loads instantly.
+             Sign up in under a minute. Save your first zone and get a snapshot of its conditions right away.
             </p>
           </div>
           {!loading && !session ? (
