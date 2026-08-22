@@ -144,8 +144,8 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 # (the pest risk model and the "Alerts" opt-in checkbox in the UI both
 # exist, but nothing currently sends a triggered email when risk changes),
 # this just makes the address ready to use once it's built.
-EMAIL_FROM_SUPPORT = os.environ.get("EMAIL_FROM_SUPPORT", "support@farmpulse.name.ng")
-EMAIL_FROM_ALERTS = os.environ.get("EMAIL_FROM_ALERTS", "alerts@farmpulse.name.ng")
+EMAIL_FROM_SUPPORT = os.environ.get("EMAIL_FROM_SUPPORT", "FarmPulse <support@farmpulse.name.ng>")
+EMAIL_FROM_ALERTS = os.environ.get("EMAIL_FROM_ALERTS", "FarmPulse <notifications@farmpulse.name.ng>")
 
 # Inbound email (support@ replies), via Resend's webhook. RESEND_WEBHOOK_SECRET
 # comes from Resend's dashboard when you create the webhook subscription
